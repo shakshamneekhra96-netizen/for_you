@@ -164,9 +164,9 @@
 
                     <div id="reward-section" class="hidden mt-6">
                         <div class="reward-box">
-                            <p class="text-pink-600 text-xl sm:text-2xl font-extrabold mb-2">Scan Me</p>
+                            <p class="text-pink-600 text-xl sm:text-2xl font-extrabold mb-2">🎉 SCAN ME🎉</p>
                             <img id="qr-image" src="" alt="Reward QR Code" width="150" height="150" class="rounded-lg">
-                            <p class="text-sm">Thank you for your time!</p>
+                            <p class="text-sm">Thank you for your time</p>
                         </div>
                     </div>
 
@@ -348,7 +348,6 @@
         `;
             historyLog.prepend(logEntry);
             historyLog.scrollTop = 0;
-            console.log("secretCode", secretCode)
         }
 
 
@@ -371,7 +370,7 @@
                     resultContent.classList.remove('hidden');
 
                     // CONGRATULATIONS Message
-                    finalMessage.innerText = "CONGRATULATIONS";
+                    finalMessage.innerText = "CONGRATULATIONS! CODE BROKEN!";
                     finalMessage.classList.add('neon-text', 'text-green-400');
                     rewardSection.classList.remove('hidden');
                     qrImage.src = SECRET_CODE_REWARD;
