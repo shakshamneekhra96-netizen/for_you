@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cipher Quest: Code Breaker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Electrolize&display=swap"
+        rel="stylesheet">
+    <style>
+        /* Base styles for dark mode and centering */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1f2937;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+            /* Ensure padding on mobile */
+        }
+
+        /* Game Card Styling */
+        .game-card {
+            background-color: #374151;
+            padding: 1.5rem;
+            /* Base padding */
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            max-width: 500px;
+            width: 100%;
+            /* Full width on mobile */
+            transition: box-shadow 0.3s ease-in-out;
+        }
+
+        /* Neon Text for Titles */
+        .neon-text {
+            font-family: 'Electrolize', sans-serif;
+            color: #00ffc8;
+            text-shadow: 0 0 5px rgba(0, 255, 200, 0.5), 0 0 10px rgba(0, 255, 200, 0.3);
+        }
+
+        /* Input Field Styling */
+        .guess-input {
+            appearance: none;
+            text-align: center;
+            letter-spacing: 0.5em;
+            font-size: 1.5rem;
+            border: 2px solid #00ffc8;
+            background-color: #1f2937;
+            color: white;
+            transition: border-color 0.3s;
+        }
+
+        .guess-input:focus {
+            outline: none;
+            border-color: #ff0077;
+            box-shadow: 0 0 8px rgba(255, 0, 119, 0.5);
+        }
+
+        /* Reward Box Styling */
+        .reward-box {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 0, 119, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .reward-box p {
+            color: #1f2937;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        /* Keyframe for the subtle flash animation (on close guess) */
+        @keyframes subtleFlash {
+            0% {
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            }
+
+            50% {
+                box-shadow: 0 10px 30px rgba(0, 255, 200, 0.8);
+            }
+
+            100% {
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            }
+        }
+
+        .flash {
+            animation: subtleFlash 0.3s ease-in-out;
+        }
+
+        /* Keyframe for the dramatic win blast/explosion */
+        @keyframes code-blast {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+                border-color: #ff0077;
+            }
+
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 30px 10px #ff0077, 0 0 50px 20px #ffcc00;
+                border-color: #ffcc00;
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 10px 5px rgba(255, 255, 255, 0.5);
+                border-color: #ff0077;
+            }
+        }
+
+        .blast-effect {
+            animation: code-blast 0.6s ease-out;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="game-card" id="game-card">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center mb-6 neon-text">Cipher Quest</h1>
+
+        <p id="feedback-message" class="text-center text-sm sm:text-lg mb-4 text-white">
+            Guess the 4-digit code (0-9). Digits do not repeat.
+            <br>
+            <span class="text-green-400 font-bold">Feedback combines:</span> Total correct digits, and how many are in
+            the right position.
+        </p>
+
+        <div class="flex flex-col items-center space-y-4">
+            <input type="number" id="guess-input" maxlength="4" placeholder=" _ _ _ _ "
+                class="guess-input w-40 sm:w-48 p-3 rounded-lg" onkeypress="if(this.value.length==4) return false;">
+            <button id="submit-button" onclick="submitGuess()"
+                class="px-6 sm:px-8 py-2 sm:py-3 bg-indigo-500 hover:bg-indigo-600 text-white text-base sm:text-lg font-bold rounded-full transition duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50">
+                Submit Guess
+            </button>
+        </div>
+
+        <div id="attempts-container" class="mt-8">
+            <h2 class="text-xl font-bold mb-3 text-center neon-text">Attempts (<span id="guesses-left">10</span> left)
+            </h2>
+            <div id="history-log" class="space-y-2 max-h-64 overflow-y-auto p-2 bg-gray-700 rounded-lg shadow-inner">
+                <!-- Guess history will be logged here -->
+            </div>
+        </div>
+
+        <!-- Win/Lose Overlay -->
+        <div id="result-overlay"
+            class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 flex flex-col items-center justify-center p-4 z-50">
+            <div class="bg-gray-800 p-6 sm:p-8 rounded-xl shadow-2xl text-center max-w-xs sm:max-w-sm w-full border-4 border-pink-500"
+                id="result-box">
+                <!-- Content will appear after the blast -->
+                <div id="result-content" class="hidden">
+                    <h2 id="final-message" class="text-3xl sm:text-4xl font-extrabold mb-4 neon-text"></h2>
+                    <p id="secret-code-display" class="text-xl sm:text-2xl text-yellow-400 mb-6"></p>
+
+                    <div id="reward-section" class="hidden mt-6">
+                        <div class="reward-box">
+                            <p class="text-pink-600 text-xl sm:text-2xl font-extrabold mb-2">Scan Me</p>
+                            <img id="qr-image" src="" alt="Reward QR Code" width="150" height="150" class="rounded-lg">
+                            <p class="text-sm">Thank you for your time!</p>
+                        </div>
+                    </div>
+
+                    <button onclick="initGame()"
+                        class="mt-6 px-6 py-3 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-full transition">
+                        Retry / Play Again
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Configuration and State ---
+        const CODE_LENGTH = 4;
+        const MAX_ATTEMPTS = 10;
+        const SECRET_CODE_REWARD = "reward.png";
+
+        let secretCode = [];
+        let attemptsRemaining = MAX_ATTEMPTS;
+        let gameActive = false;
+
+        // --- DOM Elements ---
+        const gameCard = document.getElementById('game-card');
+        const guessInput = document.getElementById('guess-input');
+        const historyLog = document.getElementById('history-log');
+        const guessesLeftDisplay = document.getElementById('guesses-left');
+        const resultOverlay = document.getElementById('result-overlay');
+        const resultBox = document.getElementById('result-box');
+        const resultContent = document.getElementById('result-content');
+        const finalMessage = document.getElementById('final-message');
+        const secretCodeDisplay = document.getElementById('secret-code-display');
+        const rewardSection = document.getElementById('reward-section');
+        const qrImage = document.getElementById('qr-image');
+        const submitButton = document.getElementById('submit-button');
+
+
+        // --- Game Logic ---
+
+        /** Generates a secret code of unique digits. */
+        function generateCode() {
+            const digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+            for (let i = digits.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [digits[i], digits[j]] = [digits[j], digits[i]];
+            }
+            secretCode = digits.slice(0, CODE_LENGTH).map(d => d.toString());
+        }
+
+        /**
+         * Checks the player's guess against the secret code.
+         * @param {string} guessString 
+         * @returns {{hits: number, clues: number}}
+         */
+        function checkGuess(guessString) {
+            const guess = Array.from(guessString);
+            let hits = 0;
+            let clues = 0;
+
+            const codeCopy = [...secretCode];
+
+            // 1. Check for HITS (Correct position)
+            for (let i = 0; i < CODE_LENGTH; i++) {
+                if (guess[i] === codeCopy[i]) {
+                    hits++;
+                    guess[i] = 'H';
+                    codeCopy[i] = 'H';
+                }
+            }
+
+            // 2. Check for CLUES (Correct digit, wrong position)
+            for (let i = 0; i < CODE_LENGTH; i++) {
+                if (guess[i] !== 'H') {
+                    const codeIndex = codeCopy.indexOf(guess[i]);
+                    if (codeIndex > -1) {
+                        clues++;
+                        codeCopy[codeIndex] = 'C';
+                    }
+                }
+            }
+
+            return { hits, clues };
+        }
+
+        /** Handles the submission of a new guess. */
+        function submitGuess() {
+            if (!gameActive) return;
+
+            const guessString = guessInput.value.trim();
+
+            // Validation 1: Length and numeric
+            if (guessString.length !== CODE_LENGTH || isNaN(guessString)) {
+                document.getElementById('feedback-message').innerHTML = "Please enter a valid 4-digit number (0-9). Digits do not repeat. <br> <span class='text-green-400 font-bold'>Feedback combines:</span> Total correct digits, and how many are in the right position.";
+                return;
+            }
+
+            // Validation 2: Unique digits
+            const uniqueDigits = new Set(Array.from(guessString));
+            if (uniqueDigits.size !== CODE_LENGTH) {
+                document.getElementById('feedback-message').innerHTML = "All digits must be unique! (e.g., 1234, not 1123).";
+                return;
+            }
+
+
+            attemptsRemaining--;
+            guessesLeftDisplay.innerText = attemptsRemaining;
+            document.getElementById('feedback-message').innerHTML = "Guess the 4-digit code (0-9). Digits do not repeat. <br> <span class='text-green-400 font-bold'>Feedback combines:</span> Total correct digits, and how many are in the right position.";
+
+            const feedback = checkGuess(guessString);
+            logAttempt(guessString, feedback.hits, feedback.clues, MAX_ATTEMPTS - attemptsRemaining);
+
+            // Add dynamic visual feedback (flash) for close guess
+            if (feedback.hits >= 3) {
+                gameCard.classList.add('flash');
+                setTimeout(() => gameCard.classList.remove('flash'), 300);
+            }
+
+            // Check Win Condition
+            if (feedback.hits === CODE_LENGTH) {
+                endGame(true);
+            }
+            // Check Lose Condition
+            else if (attemptsRemaining <= 0) {
+                endGame(false);
+            }
+
+            guessInput.value = '';
+        }
+
+        /** Renders the attempt result to the history log. */
+        function logAttempt(guess, hits, clues, attemptNumber) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'flex justify-between items-center p-2 rounded-md transition-all duration-300 flex-wrap';
+
+            let colorClasses = 'bg-gray-600';
+
+            if (hits > 0 || clues > 0) {
+                colorClasses = 'bg-gray-700 hover:bg-gray-600';
+            }
+            if (hits === CODE_LENGTH - 1) {
+                colorClasses = 'bg-yellow-800 hover:bg-yellow-700';
+            }
+
+            // Calculate the combined feedback (the main hint)
+            const totalCorrect = hits + clues;
+            let summaryMessage;
+
+            if (totalCorrect === 0) {
+                summaryMessage = "None of the digits are correct.";
+            } else {
+                const digitWord = totalCorrect === 1 ? 'digit' : 'digits';
+                const hitWord = hits === 1 ? 'is' : 'are';
+
+                summaryMessage = `${totalCorrect} correct ${digitWord}. ${hits} of them ${hitWord} in the correct position.`;
+            }
+
+            logEntry.className += ' ' + colorClasses;
+
+            logEntry.innerHTML = `
+            <!-- Top Row: Attempt # and Guess -->
+            <div class="flex justify-between w-full pb-2 border-b border-gray-600/50 mb-1 sm:mb-2">
+                <span class="text-white font-bold text-base sm:text-lg">#${attemptNumber}</span>
+                <span class="text-white font-mono text-xl sm:text-2xl tracking-widest">${guess}</span>
+            </div>
+            
+            <!-- Middle Row: Descriptive Summary -->
+            <p class="text-xs sm:text-sm font-light text-center w-full text-gray-300 mb-2">${summaryMessage}</p>
+
+            <!-- Bottom Row: Detailed Breakdown (Hits/Clues) -->
+            <div class="flex w-full justify-center space-x-2 sm:space-x-3 text-xs sm:text-sm">
+                <span class="px-2 sm:px-3 py-1 bg-green-500 rounded-full text-white font-bold shadow-md whitespace-nowrap">
+                    ✅ Hits: ${hits}
+                </span>
+                <span class="px-2 sm:px-3 py-1 bg-yellow-500 rounded-full text-gray-800 font-bold shadow-md whitespace-nowrap">
+                    🟨 Clues: ${clues}
+                </span>
+            </div>
+        `;
+            historyLog.prepend(logEntry);
+            historyLog.scrollTop = 0;
+            console.log("secretCode", secretCode)
+        }
+
+
+        /** Handles the end of the game (win or lose). */
+        function endGame(won) {
+            gameActive = false;
+
+            resultOverlay.classList.remove('hidden');
+            secretCodeDisplay.innerText = `Secret Code: ${secretCode.join('')}`;
+
+            if (won) {
+                // 1. Prepare for the blast
+                resultContent.classList.add('hidden');
+                resultBox.classList.add('blast-effect');
+
+                // 2. Wait for the blast animation (0.6s) to finish
+                setTimeout(() => {
+                    // 3. Reveal content and remove blast effect
+                    resultBox.classList.remove('blast-effect');
+                    resultContent.classList.remove('hidden');
+
+                    // CONGRATULATIONS Message
+                    finalMessage.innerText = "CONGRATULATIONS";
+                    finalMessage.classList.add('neon-text', 'text-green-400');
+                    rewardSection.classList.remove('hidden');
+                    qrImage.src = SECRET_CODE_REWARD;
+                }, 600); // 600ms matches the CSS animation duration
+
+            } else {
+                // Lose condition: show content immediately
+                resultContent.classList.remove('hidden');
+                finalMessage.innerText = "ACCESS DENIED. GAME OVER.";
+                finalMessage.classList.remove('neon-text', 'text-green-400');
+                finalMessage.classList.add('text-red-500');
+                rewardSection.classList.add('hidden');
+            }
+        }
+
+        /** Resets the game state and starts a new round. */
+        function initGame() {
+            generateCode();
+            attemptsRemaining = MAX_ATTEMPTS;
+            gameActive = true;
+
+            // Reset DOM
+            historyLog.innerHTML = '';
+            guessInput.value = '';
+            guessesLeftDisplay.innerText = MAX_ATTEMPTS;
+            document.getElementById('feedback-message').innerHTML = "Guess the 4-digit code (0-9). Digits do not repeat. <br> <span class='text-green-400 font-bold'>Feedback combines:</span> Total correct digits, and how many are in the right position.";
+            resultOverlay.classList.add('hidden');
+            resultContent.classList.remove('hidden');
+            submitButton.disabled = false;
+            guessInput.disabled = false;
+
+            // Remove any persistent visual states
+            gameCard.classList.remove('flash');
+            resultBox.classList.remove('blast-effect');
+        }
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', initGame);
+
+    </script>
+</body>
+
+</html>
